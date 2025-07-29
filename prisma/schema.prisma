@@ -1,0 +1,120 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String     @id @default(cuid())
+  username     String     @unique
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         UserRole   @default(USER)
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  // Relations
+  transactions Transaction[]
+  actionLogs   ActionLog[]   @relation("ActorActions")
+  createdBooks Book[]        @relation("CreatedBooks")
+
+  @@map("users")
+}
+
+model Book {
+  id           String     @id @default(cuid())
+  title        String
+  startDate    DateTime
+  endDate      DateTime
+  durationDays Int
+  status       BookStatus @default(ACTIVE)
+  createdBy    String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  // Relations
+  transactions Transaction[]
+  creator      User          @relation("CreatedBooks", fields: [createdBy], references: [id])
+
+  @@map("books")
+}
+
+model Transaction {
+  id              String   @id @default(cuid())
+  userId          String
+  bookId          String
+  transactionDate DateTime
+  amountGained    Float    @default(0)
+  amountSpent     Float    @default(0)
+  note            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+model ActionLog {
+  id         String     @id @default(cuid())
+  actorId    String
+  actionType ActionType
+  targetType TargetType
+  targetId   String?
+  details    String?
+  createdAt  DateTime   @default(now())
+
+  // Relations
+  actor User @relation("ActorActions", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@map("action_logs")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+  REMOVED
+}
+
+enum BookStatus {
+  ACTIVE
+  INACTIVE
+  CLOSED
+}
+
+enum ActionType {
+  BOOK_CREATED
+  BOOK_UPDATED
+  BOOK_CLOSED
+  USER_CREATED
+  USER_BANNED
+  USER_REMOVED
+  USER_UPDATED
+  TRANSACTION_CREATED
+  TRANSACTION_UPDATED
+  TRANSACTION_DELETED
+}
+
+enum TargetType {
+  BOOK
+  USER
+  TRANSACTION
+}
